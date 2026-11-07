@@ -1,0 +1,2310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FIREVOD Panel Pro (Modo Debug Dispositivos)</title>
+
+    <!-- SDK de Firebase Web (Compat Mode) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <!-- Script de Autenticación de Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCpJChysV6vKJwtVUJf_tm2lV0xOiSiMc4",
+            authDomain: "firevodpanel.firebaseapp.com",
+            databaseURL: "https://firevodpanel-default-rtdb.firebaseio.com",
+            projectId: "firevodpanel",
+            storageBucket: "firevodpanel.firebasestorage.app",
+            messagingSenderId: "411147446371",
+            appId: "1:411147446371:web:76cc2a6ac2479638983056"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const auth = firebase.auth();
+
+        // URL exacta de tu Cloudflare Worker configurada
+        const CF_WORKER_URL = "https://firevodvip.vntaslegazytv.workers.dev";
+    </script>
+
+    <style>
+        :root {
+            --bg-dark: #0b0f19;
+            --bg-card: #131b2e;
+            --sidebar-bg: #131b2e;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #1e293b;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --info: #06b6d4;
+            --nav-bg: #0f172a;
+        }
+
+        /* Variables para el Modo Día (Light Mode) */
+        body.light-mode {
+            --bg-dark: #f1f5f9;
+            --bg-card: #ffffff;
+            --sidebar-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --nav-bg: #ffffff;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Roboto', system-ui, -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg-dark); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; transition: background-color 0.3s, color 0.3s; padding-bottom: 0; }
+        
+        .sidebar { display: none !important; }
+        
+        .main-wrapper { flex-grow: 1; display: flex; flex-direction: column; width: 100%; max-width: 600px; margin: 0 auto; }
+        
+        .navbar { height: 64px; background-color: var(--bg-card); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 16px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.1); gap: 10px; }
+        
+        /* Barra de Navegación Superior Scrollable (Reemplazo de la inferior) */
+        .top-nav { position: sticky; top: 64px; left: 0; width: 100%; background-color: var(--nav-bg); border-bottom: 1px solid var(--border-color); display: flex; overflow-x: auto; z-index: 90; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 0 8px; }
+        .top-nav::-webkit-scrollbar { display: none; }
+        .top-nav { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .top-nav-item { display: flex; align-items: center; gap: 6px; color: var(--text-muted); text-decoration: none; font-size: 0.85rem; font-weight: 500; cursor: pointer; padding: 12px 14px; white-space: nowrap; border-bottom: 2px solid transparent; transition: all 0.2s; }
+        .top-nav-item span.icon { font-size: 1.1rem; }
+        .top-nav-item.active, .top-nav-item:hover { color: var(--accent); font-weight: 700; border-bottom-color: var(--accent); }
+
+        .container { padding: 16px; overflow-y: auto; flex-grow: 1; background-color: var(--bg-dark); }
+        .content-view { display: none; }
+        .content-view.active { display: block; animation: fadeIn 0.25s ease-in-out; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .metrics-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
+        .metric-card { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 20px; padding: 18px; box-shadow: 0 4px 16px rgba(0,0,0,0.04); position: relative; overflow: hidden; }
+        .metric-card.full { grid-column: span 2; }
+        .metric-card span { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
+        .metric-card h3 { font-size: 1.8rem; margin-top: 6px; color: var(--text-main); font-weight: 700; }
+        
+        .panel { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 20px; padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.04); }
+        .panel-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+        .file-controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; width: 100%; }
+        
+        .btn-upload, .btn-primary { background-color: var(--accent); color: #fff; padding: 12px 20px; border-radius: 14px; border: none; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25); font-size: 0.95rem; width: 100%; }
+        .btn-upload:hover, .btn-primary:hover { background-color: var(--accent-hover); transform: translateY(-1px); }
+        
+        .btn-secondary { background-color: var(--bg-dark); color: var(--text-main); padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border-color); cursor: pointer; font-weight: 500; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: background 0.2s; font-size: 0.9rem; }
+        .btn-secondary:hover { opacity: 0.85; }
+        
+        .btn-warning { background-color: rgba(245, 158, 11, 0.15); color: var(--warning); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; }
+        .btn-danger { background-color: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 10px; }
+        .btn-success { background-color: rgba(16, 185, 129, 0.15); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; }
+        
+        input[type="file"] { display: none; }
+        
+        .form-control, .search-input, select, textarea { background-color: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-main); padding: 12px 16px; border-radius: 12px; width: 100%; outline: none; transition: border-color 0.2s, box-shadow 0.2s; font-size: 0.95rem; }
+        .form-control:focus, .search-input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+        
+        .form-grid { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 16px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group.full-width { grid-column: 1 / -1; }
+        .form-group label { font-size: 0.82rem; color: var(--text-muted); font-weight: 600; letter-spacing: 0.3px; }
+        .input-group { display: flex; gap: 8px; }
+        
+        .checkbox-group { display: flex; gap: 12px; flex-wrap: wrap; background: var(--bg-dark); padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border-color); }
+        .checkbox-group label { display: flex; align-items: center; gap: 8px; color: var(--text-main); cursor: pointer; font-weight: normal; font-size: 0.88rem; }
+        
+        .table-responsive { overflow-x: auto; border-radius: 14px; border: 1px solid var(--border-color); }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { background-color: var(--bg-dark); color: var(--text-muted); padding: 12px 14px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); }
+        td { padding: 12px 14px; border-bottom: 1px solid var(--border-color); font-size: 0.88rem; word-break: break-all; color: var(--text-main); }
+        tbody tr:hover { background-color: rgba(59, 130, 246, 0.04); }
+        
+        .badge { padding: 4px 8px; border-radius: 8px; font-size: 0.72rem; font-weight: 600; display: inline-block; margin: 2px 0; text-align: center; letter-spacing: 0.3px; }
+        .badge-success { background-color: rgba(16, 185, 129, 0.15); color: var(--success); }
+        .badge-info { background-color: rgba(6, 182, 212, 0.15); color: var(--info); }
+        .badge-warning { background-color: rgba(245, 158, 11, 0.15); color: var(--warning); }
+        .badge-danger { background-color: rgba(239, 68, 68, 0.15); color: var(--danger); }
+        
+        .pass-cell { font-family: monospace; letter-spacing: 1px; color: var(--warning); }
+        .pin-cell { font-family: monospace; font-weight: bold; color: var(--info); }
+        .server-tag { color: var(--info); }
+        .section-divider { grid-column: 1 / -1; border-top: 1px dashed var(--border-color); margin: 12px 0 8px 0; padding-top: 12px; font-weight: bold; color: var(--accent); font-size: 0.9rem; }
+
+        .hidden { display: none !important; }
+        
+        #login-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: var(--bg-dark); display: flex; justify-content: center; align-items: center; z-index: 9999; padding: 20px; }
+        .login-box { background: var(--bg-card); padding: 30px; border-radius: 24px; border: 1px solid var(--border-color); width: 100%; max-width: 380px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.4); position: relative; }
+        .login-box h2 { color: var(--accent); margin-bottom: 6px; font-size: 1.5rem; font-weight: 700; }
+
+        /* Ocultar elementos inyectados por Netlify Drop */
+        iframe[src*="netlify"], div:has(> a[href*="netlify.com/drop"]), a[href*="netlify.com/drop"] {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Pantalla de Login -->
+    <div id="login-screen">
+        <div class="login-box">
+            <h2>⚡ FIREVOD</h2>
+            <p style="color: var(--text-muted); margin-bottom: 24px; font-size: 0.9rem;">🔐 Panel de Administración y Resellers</p>
+            <form id="loginForm" onsubmit="iniciarSesion(event)">
+                <div class="form-group" style="text-align: left; margin-bottom: 14px;">
+                    <label>👤 Usuario o Correo Admin</label>
+                    <input type="text" id="loginEmail" class="form-control" required placeholder="admin@tupanel.com">
+                </div>
+                <div class="form-group" style="text-align: left; margin-bottom: 24px;">
+                    <label>🔑 Contraseña</label>
+                    <input type="password" id="loginPass" class="form-control" required placeholder="••••••••">
+                </div>
+                <button type="submit" id="btnLogin" class="btn-primary" style="padding: 14px;">🚀 Ingresar al Sistema</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Contenido Principal -->
+    <div class="main-wrapper hidden" id="main-wrapper">
+        <header class="navbar">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.2rem;">⚡</span>
+                <div id="nav-title" style="font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px;">📊 Dashboard</div>
+                <small id="role-badge" style="font-size: 0.65rem; color: var(--success); background: rgba(16,185,129,0.1); padding: 2px 6px; border-radius: 6px;">[Admin]</small>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <button type="button" id="themeToggleBtn" class="btn-secondary" onclick="alternarModoDiaNoche()" style="padding: 6px 10px; font-size: 0.85rem; border-radius: 10px;">
+                    🌙
+                </button>
+            </div>
+        </header>
+
+        <!-- Barra de Navegación Superior -->
+        <nav class="top-nav hidden" id="top-nav">
+            <a class="top-nav-item active" data-target="view-dashboard" onclick="cambiarVista('view-dashboard', this)">
+                <span class="icon">📊</span>
+                <span>Dashboard</span>
+            </a>
+            <a class="top-nav-item" data-target="view-lines" onclick="cambiarVista('view-lines', this)">
+                <span class="icon">👥</span>
+                <span>Clientes</span>
+            </a>
+            <a class="top-nav-item" id="nav-item-m3u-lists" data-target="view-m3u-lists" onclick="cambiarVista('view-m3u-lists', this)">
+                <span class="icon">📝</span>
+                <span>Listas M3U</span>
+            </a>
+            <a class="top-nav-item" id="nav-item-resellers" data-target="view-resellers" onclick="cambiarVista('view-resellers', this)">
+                <span class="icon">👔</span>
+                <span>Resellers</span>
+            </a>
+            <a class="top-nav-item" id="nav-item-servers" data-target="view-servers" onclick="cambiarVista('view-servers', this)">
+                <span class="icon">🖥️</span>
+                <span>Servidores</span>
+            </a>
+            <a class="top-nav-item" id="nav-item-settings" data-target="view-settings" onclick="cambiarVista('view-settings', this)">
+                <span class="icon">⚙️</span>
+                <span>Ajustes</span>
+            </a>
+        </nav>
+
+        <!-- BARRA DE BÚSQUEDA GLOBAL FLOTANTE -->
+        <div style="padding: 12px 16px 0 16px; position: relative;">
+            <input type="text" id="globalSearchInput" class="search-input" placeholder="🔍 Buscar clientes o resellers..." oninput="ejecutarBusquedaGlobal(this.value)" autocomplete="off" style="font-size: 0.9rem; padding: 10px 14px;">
+            <div id="globalSearchResults" style="position: absolute; top: 115%; left: 16px; right: 16px; max-height: 320px; overflow-y: auto; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.25); z-index: 1000; display: none; padding: 6px 0;"></div>
+        </div>
+
+        <main class="container">
+            
+            <!-- VISTA DASHBOARD -->
+            <div id="view-dashboard" class="content-view active">
+                <div class="metrics-grid">
+                    <div class="metric-card" id="stat-total-card">
+                        <span id="stat-total-title">📈 Xtream Cargadas</span>
+                        <h3 id="stat-total">0</h3>
+                    </div>
+                    <div class="metric-card">
+                        <span>👥 Líneas Creadas</span>
+                        <h3 id="stat-clientes">0</h3>
+                    </div>
+                    <div class="metric-card full" id="stat-servers-card">
+                        <span>🖥️ Servidores Detectados</span>
+                        <h3 id="stat-servers">0</h3>
+                    </div>
+                </div>
+
+                <section class="panel" id="admin-dashboard-upload">
+                    <div class="panel-header" style="flex-direction: column; align-items: stretch; gap: 10px;">
+                        <div class="file-controls">
+                            <label for="fileLoader" class="btn-upload">📁 Cargar Lista Xtream (.txt)</label>
+                            <input type="file" id="fileLoader" accept=".txt">
+                        </div>
+                        <span id="file-name" style="color: var(--text-muted); font-size: 0.78rem; text-align: center;">📂 Ningún archivo seleccionado</span>
+                        <input type="text" id="searchInput" class="search-input" placeholder="🔍 Filtrar cuentas locales..." style="font-size: 0.88rem; padding: 10px 12px;">
+                    </div>
+
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>#️⃣</th>
+                                    <th>👤 Usuario</th>
+                                    <th>🔑 Pass</th>
+                                    <th>🌐 Servidor</th>
+                                    <th>⏳ Vence</th>
+                                    <th>🔗 Conex</th>
+                                    <th>🟢 Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="accountsTable">
+                                <tr>
+                                    <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 25px; font-size: 0.85rem;">
+                                        📁 Carga un archivo de texto con tus cuentas Xtream.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- VISTA LÍNEAS / CLIENTES -->
+            <div id="view-lines" class="content-view">
+                
+                <!-- NUEVO: VERIFICADOR DE CUENTA EN VIVO -->
+                <section class="panel" id="panel-verificador">
+                    <div class="panel-header" style="margin-bottom: 8px;">
+                        <h3 style="font-size: 1.05rem; color: var(--info);">🔍 Verificador de Cuenta Activa</h3>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">Comprueba si un cliente puede ingresar o tiene sesión activa antes de modificarlo.</p>
+                    <div class="input-group">
+                        <input type="text" id="inputVerificador" class="form-control" placeholder="Ingrese PIN o Usuario Cliente...">
+                        <button type="button" class="btn-primary" onclick="verificarCuentaEnVivo()" style="width: auto; background-color: var(--info);">Verificar</button>
+                    </div>
+                    <div id="resultadoVerificador" style="margin-top: 12px; display: none; background: var(--bg-dark); padding: 14px; border-radius: 12px; border: 1px solid var(--border-color);">
+                        <!-- Resultados del verificador -->
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-header">
+                        <h3 id="form-title-text" style="font-size: 1.05rem;">➕ Nueva Línea Cliente</h3>
+                        <button type="button" id="btnCancelarEdicion" class="btn-secondary" style="display: none; padding: 6px 10px; font-size: 0.78rem;" onclick="resetearFormulario()">❌ Cancelar</button>
+                    </div>
+                    
+                    <form id="createLineForm" onsubmit="guardarOActualizarLinea(event)">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>👤 Usuario Cliente</label>
+                                <div class="input-group">
+                                    <input type="text" id="newUser" class="form-control" placeholder="Ej. cliente_89" required>
+                                    <button type="button" class="btn-secondary" onclick="generarUsuarioAleatorio()">🎲</button>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>🔑 Contraseña</label>
+                                <div class="input-group">
+                                    <input type="text" id="newPass" class="form-control" placeholder="Ej. pass_902" required>
+                                    <button type="button" class="btn-secondary" onclick="generarPasswordAleatorio()">🎲</button>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>📌 Código PIN Único</label>
+                                <div class="input-group">
+                                    <input type="text" id="newPin" class="form-control pin-cell" required>
+                                    <button type="button" class="btn-secondary" onclick="generarPinAcceso()">⚡</button>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>⏳ Vencimiento <span id="label-duracion-nota" style="font-size: 0.7rem; color: var(--warning);"></span></label>
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                    <select id="newDuration" onchange="actualizarFechaManual()" class="form-control">
+                                        <option value="keep" id="opt-keep" style="display: none;">🔒 Mantener fecha actual</option>
+                                        <option value="2h">⚡ 2 Horas de Prueba (Gratis)</option>
+                                        <option value="1m" selected>📅 1 Mes (1 Crédito)</option>
+                                        <option value="3m">📅 3 Meses (3 Créditos)</option>
+                                        <option value="6m">📅 6 Meses (6 Créditos)</option>
+                                        <option value="12m">📅 12 Meses (12 Créditos)</option>
+                                    </select>
+                                    <input type="datetime-local" id="manualVencimiento" class="form-control" required>
+                                </div>
+                            </div>
+
+                            <!-- Selector de Lista M3U -->
+                            <div class="form-group full-width">
+                                <label style="color: var(--info);">📂 Seleccionar Lista M3U</label>
+                                <select id="selectedM3uListClient" class="form-control">
+                                    <option value="">-- Ninguna (Servidor por defecto) --</option>
+                                </select>
+                            </div>
+
+                            <!-- SECCIÓN ADMIN: XTREAM Y M3U AVANZADO -->
+                            <div id="admin-advanced-sections" style="grid-column: 1 / -1; display: contents;">
+                                <div class="section-divider">🌐 Credenciales API Xtream (Admin)</div>
+
+                                <div class="form-group full-width">
+                                    <label style="color: var(--info);">🔄 Servidor Xtream Guardado</label>
+                                    <select id="serverSelect" class="form-control" onchange="inyectarServidorDropdown()">
+                                        <option value="">-- Seleccionar de la lista --</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>🌐 URL Servidor</label>
+                                    <input type="text" id="newServerUrl" class="form-control" placeholder="http://servidor.com:8080">
+                                </div>
+                                <div class="form-group">
+                                    <label>👤 Usuario Xtream</label>
+                                    <input type="text" id="newXtreamUser" class="form-control" placeholder="Usuario">
+                                </div>
+                                <div class="form-group">
+                                    <label>🔑 Contraseña Xtream</label>
+                                    <input type="text" id="newXtreamPass" class="form-control" placeholder="Contraseña">
+                                </div>
+
+                                <div class="section-divider">📺 Cuentas Adicionales y Listas M3U</div>
+
+                                <div class="form-group full-width">
+                                    <label>🔗 URL Dropbox Principal</label>
+                                    <input type="text" id="newDropboxUrl" class="form-control" placeholder="https://.../lista.m3u?dl=0">
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>📝 Contenido M3U Crudo Principal</label>
+                                    <textarea id="newM3u" class="form-control" rows="2" placeholder="Pega contenido M3U..."></textarea>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>🚫 Filtros - <strong>Principal</strong></label>
+                                    <div class="checkbox-group">
+                                        <label><input type="checkbox" id="hideLiveMain"> 📺 Ocultar En Vivo</label>
+                                        <label><input type="checkbox" id="hideVodMain"> 🎬 Ocultar Películas</label>
+                                        <label><input type="checkbox" id="hideSeriesMain"> 🍿 Ocultar Series</label>
+                                    </div>
+                                </div>
+
+                                <div class="form-group full-width">
+                                    <label>🔗 URL Dropbox Respaldo</label>
+                                    <input type="text" id="backupDropboxUrl" class="form-control" placeholder="https://.../lista_backup.m3u?dl=0">
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>📝 Contenido M3U Respaldo</label>
+                                    <textarea id="backupM3u" class="form-control" rows="2" placeholder="Pega contenido M3U respaldo..."></textarea>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label>🚫 Filtros - <strong>Respaldo</strong></label>
+                                    <div class="checkbox-group">
+                                        <label><input type="checkbox" id="hideLiveBackup"> 📺 Ocultar En Vivo</label>
+                                        <label><input type="checkbox" id="hideVodBackup"> 🎬 Ocultar Películas</label>
+                                        <label><input type="checkbox" id="hideSeriesBackup"> 🍿 Ocultar Series</label>
+                                    </div>
+                                </div>
+
+                                <div class="form-group full-width">
+                                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--info); font-size: 0.88rem;">
+                                        <input type="checkbox" id="mergeTotalContent" checked> 🔗 Unir todo el contenido filtrado en una lista.
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="section-divider">📱 Configuración de Dispositivos (Máx 2)</div>
+                            
+                            <div class="form-group full-width" style="background: rgba(6, 182, 212, 0.08); padding: 12px; border-radius: 12px; border: 1px solid var(--info);">
+                                <span style="font-size: 0.8rem; color: var(--info);">📱 <strong>App FIREVOD IPTV:</strong> Permite registrarse en un máximo de 2 dispositivos de forma automática.</span>
+                            </div>
+
+                            <div class="form-group full-width" style="background: rgba(239, 68, 68, 0.08); padding: 12px; border-radius: 12px; border: 1px solid var(--danger);">
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--danger); font-weight: bold; font-size: 0.88rem;">
+                                    <input type="checkbox" id="bloquearAcceso"> 🚫 BLOQUEAR ACCESO PIN
+                                </label>
+                            </div>
+
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 10px; background: var(--bg-dark); padding: 12px; border-radius: 12px; border: 1px solid var(--border-color);">
+                            <span style="font-size: 0.78rem; color: var(--text-muted); text-align: center;" id="form-status-msg">
+                                🔄 Sincronización en tiempo real en Firebase.
+                            </span>
+                            <button type="submit" id="btnSubmitForm" class="btn-primary" style="padding: 14px;">💾 Guardar y Activar Línea</button>
+                        </div>
+                    </form>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-header" style="flex-direction: column; align-items: stretch; gap: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                            <h3 style="font-size: 1.05rem;">👥 Clientes Registrados</h3>
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <label style="font-size: 0.78rem; color: var(--text-muted);">👁️ Mostrar:</label>
+                                <select id="clientesPerPage" class="form-control" style="width: auto; padding: 6px 10px; font-size: 0.82rem;" onchange="cambiarPaginacionClientes(this.value)">
+                                    <option value="10">10</option>
+                                    <option value="50" selected>50</option>
+                                    <option value="100">100</option>
+                                    <option value="500">500</option>
+                                    <option value="todos">Todos</option>
+                                </select>
+                            </div>
+                        </div>
+                        <!-- BUSCADOR ESPECÍFICO PARA LA TABLA DE CLIENTES REGISTRADOS -->
+                        <div>
+                            <input type="text" id="searchClientsTable" class="search-input" placeholder="🔍 Buscar por cliente, PIN, pass, servidor o dispositivos..." oninput="renderizarTablaClientes()" style="font-size: 0.88rem; padding: 10px 12px;">
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead id="thead-clients">
+                            </thead>
+                            <tbody id="clientsTable">
+                                <tr>
+                                    <td colspan="10" style="text-align: center; color: var(--text-muted); padding: 25px; font-size: 0.85rem;">
+                                        ⏳ Cargando usuarios desde Firebase...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- CONTROLES DE PAGINACIÓN INFERIOR -->
+                    <div id="paginationControls" style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; font-size: 0.82rem; color: var(--text-muted); flex-wrap: wrap; gap: 10px;">
+                        <span id="paginationInfo">Mostrando 0 de 0</span>
+                        <div style="display: flex; gap: 6px;">
+                            <button type="button" class="btn-secondary" id="btnPrevPage" onclick="cambiarPaginaOffset(-1)" style="padding: 6px 12px; font-size: 0.78rem;">◀️ Anterior</button>
+                            <button type="button" class="btn-secondary" id="btnNextPage" onclick="cambiarPaginaOffset(1)" style="padding: 6px 12px; font-size: 0.78rem;">Siguiente ▶️</button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- VISTA LISTAS M3U (Solo Admin) -->
+            <div id="view-m3u-lists" class="content-view">
+                <section class="panel">
+                    <div class="panel-header">
+                        <h3 style="font-size: 1.05rem;">➕ Crear / Editar Lista M3U</h3>
+                    </div>
+                    <form id="createM3uListForm" onsubmit="guardarListaM3u(event)">
+                        <input type="hidden" id="m3uListId">
+                        <div class="form-grid">
+                            <div class="form-group full-width">
+                                <label>📝 Nombre de la Lista</label>
+                                <input type="text" id="m3uListName" class="form-control" required placeholder="Ej. Servidores VIP 1">
+                            </div>
+                            
+                            <div class="form-group full-width" style="background: rgba(245, 158, 11, 0.08); padding: 12px; border-radius: 12px; border: 1px solid rgba(245, 158, 11, 0.3);">
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--warning); font-weight: bold; font-size: 0.88rem;">
+                                    <input type="checkbox" id="m3uOcultarReseller" style="width: 16px; height: 16px; accent-color: var(--warning);"> 
+                                    🔒 Ocultar a Resellers (Solo Admin)
+                                </label>
+                            </div>
+
+                            <div class="form-group full-width">
+                                <label>📝 Notas / Cuentas Xtream</label>
+                                <textarea id="m3uListContent" class="form-control" rows="6" required placeholder="Pega aquí el texto o cuentas Xtream..."></textarea>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <button type="submit" id="btnGuardarListaM3u" class="btn-primary" style="flex: 1;">💾 Guardar</button>
+                            <button type="button" class="btn-secondary" onclick="resetM3uListForm()" style="flex: 1;">❌ Cancelar</button>
+                        </div>
+                    </form>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-header">
+                        <h3 style="font-size: 1.05rem;">📋 Listas M3U Guardadas</h3>
+                    </div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>📝 Nombre</th>
+                                    <th>👁️ Visibilidad</th>
+                                    <th>⚡ Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="m3uListsTable">
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- CHECKER EN VIVO -->
+                <section class="panel" id="checkerResultPanel" style="display: none; border: 1px solid var(--accent);">
+                    <div class="panel-header">
+                        <h3 id="checkerTitle" style="font-size: 0.95rem;">🔍 Reporte en Vivo</h3>
+                        <button type="button" class="btn-secondary" onclick="cerrarPanelChecker()" style="padding: 4px 8px; font-size: 0.75rem;">✕ Cerrar</button>
+                    </div>
+                    <div id="checkerSummary" style="margin-bottom: 12px; font-weight: bold; font-size: 0.85rem;"></div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>#️⃣</th>
+                                    <th>👤 Usuario</th>
+                                    <th>🌐 Servidor</th>
+                                    <th>🟢 Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="checkerTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="margin-top: 12px;">
+                        <button type="button" id="btnLimpiarListaAuto" class="btn-danger" style="display: none; width: 100%; padding: 12px;" onclick="ejecutarLimpiezaLista()">🧹 Borrar Cuentas Vencidas</button>
+                    </div>
+                </section>
+            </div>
+
+            <!-- VISTA RESELLERS -->
+            <div id="view-resellers" class="content-view">
+                <section class="panel">
+                    <div class="panel-header">
+                        <h3 id="reseller-form-title" style="font-size: 1.05rem;">➕ Crear / Editar Reseller</h3>
+                    </div>
+                    <form id="createResellerForm" onsubmit="guardarReseller(event)">
+                        <input type="hidden" id="resellerId">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>👤 Usuario Reseller</label>
+                                <input type="text" id="resellerUser" class="form-control" required placeholder="Ej. juan_ventas">
+                            </div>
+                            <div class="form-group">
+                                <label>🔑 Contraseña</label>
+                                <input type="text" id="resellerPass" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label>🪙 Créditos Asignados</label>
+                                <input type="number" id="resellerCredits" class="form-control" required min="0" value="0">
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                            <button type="submit" id="btnGuardarReseller" class="btn-primary" style="flex: 1;">💾 Guardar</button>
+                            <button type="button" class="btn-secondary" onclick="resetResellerForm()" style="flex: 1;">❌ Cancelar</button>
+                        </div>
+                    </form>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-header">
+                        <h3 style="font-size: 1.05rem;">👥 Resellers Activos</h3>
+                    </div>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>👤 Usuario</th>
+                                    <th>🔑 Pass</th>
+                                    <th>🪙 Créditos</th>
+                                    <th>⚡ Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="resellersTable">
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- VISTA SERVIDORES -->
+            <div id="view-servers" class="content-view">
+                <section class="panel">
+                    <div class="panel-header">
+                        <h3 style="font-size: 1.05rem;">🖥️ Servidores Detectados</h3>
+                    </div>
+                    <div id="servers-list-container">
+                        <p style="color: var(--text-muted); font-size: 0.85rem;">📂 No hay servidores cargados.</p>
+                    </div>
+                </section>
+            </div>
+
+            <!-- VISTA AJUSTES -->
+            <div id="view-settings" class="content-view">
+                <section class="panel" id="admin-backup-panel">
+                    <div class="panel-header">
+                        <h3 style="font-size: 1.05rem;">💾 Respaldo y Restauración</h3>
+                    </div>
+                    <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 0.85rem;">
+                        📁 Exporta toda la base de datos de Firebase en formato JSON o restaura un respaldo previo.
+                    </p>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <button type="button" class="btn-primary" style="background-color: var(--success);" onclick="descargarRespaldoJSON()">
+                            📥 Descargar Respaldo Completo (.json)
+                        </button>
+                        
+                        <label for="backupFileLoader" class="btn-primary" style="background-color: var(--info); cursor: pointer; text-align: center;">
+                            📤 Restaurar Respaldo (.json)
+                        </label>
+                        <input type="file" id="backupFileLoader" accept=".json" onchange="cargarRespaldoJSON(event)">
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <div class="panel-header">
+                        <h3 style="font-size: 1.05rem;">⚙️ Sistema</h3>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.88rem;">
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" checked disabled> 🟢 Firebase sincronizado en tiempo real
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" checked disabled> 🔐 Autenticación unificada activa
+                        </label>
+                        <div style="margin-top: 10px;">
+                            <button type="button" class="btn-primary" style="background-color: var(--danger); width: 100%;" onclick="cerrarSesion()">
+                                🚪 Cerrar Sesión Actual
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        // Script de seguridad adicional para remover elementos de Netlify Drop de forma dinámica
+        window.addEventListener('DOMContentLoaded', () => {
+            const removerNetlifyBadge = () => {
+                document.querySelectorAll('iframe, div, a').forEach(el => {
+                    const src = el.src || '';
+                    const href = el.href || '';
+                    const text = el.innerText || '';
+                    if (src.includes('netlify') || href.includes('netlify.com/drop') || text.includes('Powered by Netlify')) {
+                        el.remove();
+                    }
+                });
+            };
+            removerNetlifyBadge();
+            setTimeout(removerNetlifyBadge, 1000);
+            setTimeout(removerNetlifyBadge, 3000);
+            
+            // Cargar preferencia de Tema (Día/Noche)
+            inicializarTema();
+        });
+
+        // ==========================================
+        // FUNCIONALIDAD: MODO DÍA / NOCHE
+        // ==========================================
+        function inicializarTema() {
+            const savedTheme = localStorage.getItem('firevod_theme');
+            const btn = document.getElementById('themeToggleBtn');
+            if (savedTheme === 'light') {
+                document.body.classList.add('light-mode');
+                if(btn) btn.innerHTML = '☀️';
+            } else {
+                document.body.classList.remove('light-mode');
+                if(btn) btn.innerHTML = '🌙';
+            }
+        }
+
+        function alternarModoDiaNoche() {
+            const btn = document.getElementById('themeToggleBtn');
+            document.body.classList.toggle('light-mode');
+            
+            if (document.body.classList.contains('light-mode')) {
+                localStorage.setItem('firevod_theme', 'light');
+                btn.innerHTML = '☀️';
+            } else {
+                localStorage.setItem('firevod_theme', 'dark');
+                btn.innerHTML = '🌙';
+            }
+        }
+
+        let cuentasData = [];
+        let lineasCreadas = [];
+        let resellersData = [];
+        let m3uListsData = []; 
+        
+        let modoEdicion = false;
+        let lineaEdicionActual = null;
+        let listaActivaEnChecker = null; 
+        
+        let currentUserRole = null; 
+        let currentResellerData = null; 
+
+        // Variables de Paginación de Clientes
+        let clientesCurrentPage = 1;
+        let clientesLimitPerPage = 50; // Por defecto 50
+
+        // INICIALIZACIÓN FECHA MANUAL AL ABRIR LA PÁGINA
+        document.addEventListener("DOMContentLoaded", () => {
+            actualizarFechaManual();
+            
+            // Filtro dinámico en la tabla de cuentas Xtream (Dashboard)
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    const term = e.target.value.toLowerCase().trim();
+                    if (!term) {
+                        renderizarTablaXtream(cuentasData);
+                        return;
+                    }
+                    const filtradas = cuentasData.filter(c => 
+                        c && (
+                            (c.usuario && c.usuario.toLowerCase().includes(term)) ||
+                            (c.servidor && c.servidor.toLowerCase().includes(term)) ||
+                            (c.estado && c.estado.toLowerCase().includes(term))
+                        )
+                    );
+                    renderizarTablaXtream(filtradas);
+                });
+            }
+        });
+
+        // ==========================================
+        // FUNCIONALIDAD: BÚSQUEDA GLOBAL
+        // ==========================================
+
+        function ejecutarBusquedaGlobal(query) {
+            const container = document.getElementById('globalSearchResults');
+            const q = query.trim().toLowerCase();
+            
+            if (!q) {
+                container.style.display = 'none';
+                container.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+            let contadorResultados = 0;
+
+            // 1. Buscar en Líneas de Clientes
+            const lineasFiltradas = lineasCreadas.filter(l => {
+                const usr = (l.usuarioCliente || '').toLowerCase();
+                const pin = (l.pin || '').toString().toLowerCase();
+                const pass = (l.passCliente || '').toLowerCase();
+                const srv = (l.serverUrl || '').toLowerCase();
+                const creador = (l.creador || '').toLowerCase();
+                return usr.includes(q) || pin.includes(q) || pass.includes(q) || srv.includes(q) || creador.includes(q);
+            });
+
+            if (lineasFiltradas.length > 0) {
+                html += `<div style="padding: 6px 14px; font-size: 0.7rem; font-weight: bold; color: var(--accent); text-transform: uppercase;">👥 Clientes Encontrados (${lineasFiltradas.length})</div>`;
+                lineasFiltradas.slice(0, 10).forEach(l => {
+                    contadorResultados++;
+                    html += `
+                        <div onclick="seleccionarResultadoBusqueda('cliente', '${l.pin}')" style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;" onmouseover="this.style.background='rgba(59,130,246,0.08)'" onmouseout="this.style.background='transparent'">
+                            <div>
+                                <strong style="color: var(--text-main); font-size: 0.88rem;">${escapeHTML(l.usuarioCliente || 'Cliente')}</strong> <small style="color: var(--info);">[PIN: ${escapeHTML(l.pin)}]</small>
+                                <div style="font-size: 0.75rem; color: var(--text-muted);">Pass: ${escapeHTML(l.passCliente)} | Vence: ${escapeHTML(l.vencimiento || 'N/A')}</div>
+                            </div>
+                            <span class="badge ${l.bloqueado || l.estado === 'BLOQUEADO' ? 'badge-danger' : 'badge-success'}">${l.bloqueado ? 'BLOQ' : 'ACT'}</span>
+                        </div>
+                    `;
+                });
+            }
+
+            // 2. Buscar en Resellers (Solo Administrador)
+            if (currentUserRole === 'admin' && resellersData.length > 0) {
+                const resellersFiltrados = resellersData.filter(r => {
+                    const usr = (r.usuario || '').toLowerCase();
+                    const pass = (r.password || '').toLowerCase();
+                    return usr.includes(q) || pass.includes(q);
+                });
+
+                if (resellersFiltrados.length > 0) {
+                    html += `<div style="padding: 6px 14px; font-size: 0.7rem; font-weight: bold; color: var(--warning); text-transform: uppercase; margin-top: 6px;">👔 Resellers Encontrados (${resellersFiltrados.length})</div>`;
+                    resellersFiltrados.slice(0, 5).forEach(r => {
+                        contadorResultados++;
+                        html += `
+                            <div onclick="seleccionarResultadoBusqueda('reseller', '${r.id}')" style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;" onmouseover="this.style.background='rgba(245,158,11,0.08)'" onmouseout="this.style.background='transparent'">
+                                <div>
+                                    <strong style="color: var(--text-main); font-size: 0.88rem;">${escapeHTML(r.usuario)}</strong>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">Pass: ${escapeHTML(r.password)}</div>
+                                </div>
+                                <span class="badge badge-info">Créd: ${escapeHTML(r.creditos)}</span>
+                            </div>
+                        `;
+                    });
+                }
+            }
+
+            if (contadorResultados === 0) {
+                html = `<div style="padding: 14px; text-align: center; color: var(--text-muted); font-size: 0.82rem;">No se encontraron resultados</div>`;
+            }
+
+            container.innerHTML = html;
+            container.style.display = 'block';
+        }
+
+        function seleccionarResultadoBusqueda(tipo, id) {
+            document.getElementById('globalSearchResults').style.display = 'none';
+            document.getElementById('globalSearchInput').value = '';
+
+            if (tipo === 'cliente') {
+                cargarLineaParaEditar(id);
+            } else if (tipo === 'reseller') {
+                cambiarVista('view-resellers', document.querySelector('[data-target="view-resellers"]'));
+                editarReseller(id);
+            }
+        }
+
+        document.addEventListener('click', (e) => {
+            const container = document.getElementById('globalSearchResults');
+            const input = document.getElementById('globalSearchInput');
+            if (container && input && !container.contains(e.target) && !input.contains(e.target)) {
+                container.style.display = 'none';
+            }
+        });
+
+        // ==========================================
+        // FUNCIONALIDAD: RESPALDO Y RESTAURACIÓN
+        // ==========================================
+
+        async function descargarRespaldoJSON() {
+            try {
+                const snapshot = await database.ref().once('value');
+                if (!snapshot.exists()) {
+                    alert("⚠️ No hay información en Firebase.");
+                    return;
+                }
+                const data = snapshot.val();
+                const jsonStr = JSON.stringify(data, null, 2);
+                const blob = new Blob([jsonStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                
+                const fecha = new Date().toISOString().slice(0, 10);
+                a.href = url;
+                a.download = `FIREVOD_Backup_${fecha}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                alert("✅ ¡Respaldo descargado exitosamente!");
+            } catch (err) {
+                console.error("Error al descargar respaldo:", err);
+                alert("❌ Error: " + err.message);
+            }
+        }
+
+        function cargarRespaldoJSON(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(event) {
+                try {
+                    const parsedData = JSON.parse(event.target.result);
+                    if (!confirm("⚠️ ¿Estás seguro de restaurar toda la base de datos en Firebase?")) {
+                        e.target.value = '';
+                        return;
+                    }
+                    await database.ref().set(parsedData);
+                    alert("✅ ¡Base de datos restaurada correctamente!");
+                } catch (err) {
+                    console.error("Error restaurando:", err);
+                    alert("❌ Archivo JSON inválido: " + err.message);
+                } finally {
+                    e.target.value = '';
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // ==========================================
+        // NUEVO: VERIFICADOR EN VIVO (PIN/USUARIO)
+        // ==========================================
+        function verificarCuentaEnVivo() {
+            const val = document.getElementById('inputVerificador').value.trim().toLowerCase();
+            const resultDiv = document.getElementById('resultadoVerificador');
+            if (!val) return;
+            
+            const linea = lineasCreadas.find(l => String(l.pin).toLowerCase() === val || (l.usuarioCliente && l.usuarioCliente.toLowerCase() === val));
+            
+            resultDiv.style.display = 'block';
+            if (!linea) {
+                resultDiv.innerHTML = `<span style="color: var(--danger); font-weight: bold;">❌ Cuenta no encontrada en tu base de clientes.</span>`;
+                return;
+            }
+            
+            let estado = (linea.bloqueado || linea.estado === 'BLOQUEADO') ? '<span class="badge badge-danger">🔴 BLOQUEADO/VENCIDO</span>' : '<span class="badge badge-success">🟢 ACTIVO</span>';
+            
+            let rawDisp = linea.dispositivosVinculados || linea.dispositivos || [];
+            let dispositivos = Array.isArray(rawDisp) ? rawDisp.filter(d => d) : (typeof rawDisp === 'object' && rawDisp !== null ? Object.values(rawDisp).filter(d => d) : (typeof rawDisp === 'string' && rawDisp.trim() !== "" ? [rawDisp] : []));
+            let dispCount = dispositivos.length;
+            
+            resultDiv.innerHTML = `
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <div style="font-size: 0.95rem;"><strong>👤 Cliente:</strong> ${escapeHTML(linea.usuarioCliente)} <small class="pin-cell">[PIN: ${escapeHTML(linea.pin)}]</small></div>
+                    <div style="font-size: 0.9rem;"><strong>🟢 Estado actual:</strong> ${estado}</div>
+                    <div style="font-size: 0.9rem;"><strong>⏳ Vencimiento:</strong> ${escapeHTML(linea.vencimiento || 'N/A')}</div>
+                    <div style="font-size: 0.9rem;"><strong>📱 Dispositivos:</strong> ${dispCount}/2 registrados</div>
+                    <div style="margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button type="button" class="btn-secondary btn-warning" onclick="cargarLineaParaEditar('${linea.pin}')" style="padding: 8px 14px; font-size: 0.85rem;">✏️ Cargar para Renovar</button>
+                        ${dispCount > 0 || linea.bloqueado ? `<button type="button" class="btn-secondary btn-danger" onclick="liberarDispositivos('${linea.pin}')" style="padding: 8px 14px; font-size: 0.85rem;">🧹 Liberar Accesos</button>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // =======================
+        // LÓGICA DE AUTENTICACIÓN
+        // =======================
+        
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                currentUserRole = 'admin';
+                currentResellerData = null;
+                mostrarPanelUI();
+            } else {
+                const savedReseller = sessionStorage.getItem('firevod_reseller_session');
+                if (savedReseller) {
+                    try {
+                        const rData = JSON.parse(savedReseller);
+                        const snap = await database.ref('resellers/' + rData.id).once('value');
+                        if (snap.exists()) {
+                            currentUserRole = 'reseller';
+                            currentResellerData = { id: snap.key, ...snap.val() };
+                            mostrarPanelUI();
+                            return;
+                        }
+                    } catch(e) {
+                        sessionStorage.removeItem('firevod_reseller_session');
+                    }
+                }
+                mostrarLoginUI();
+            }
+        });
+
+        async function iniciarSesion(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnLogin');
+            btn.disabled = true;
+            btn.textContent = "⏳ Verificando...";
+
+            const userOrEmail = document.getElementById('loginEmail').value.trim();
+            const pass = document.getElementById('loginPass').value.trim();
+            
+            if (userOrEmail.includes('@')) {
+                auth.signInWithEmailAndPassword(userOrEmail, pass)
+                    .then(() => {
+                        document.getElementById('loginForm').reset();
+                    })
+                    .catch((error) => {
+                        alert("❌ Error Admin: " + error.message);
+                        resetLoginBtn(btn);
+                    });
+                return;
+            }
+
+            try {
+                const snapshot = await database.ref('resellers').once('value');
+                let foundReseller = null;
+                
+                if (snapshot.exists()) {
+                    snapshot.forEach(child => {
+                        const r = child.val();
+                        if (r.usuario === userOrEmail && r.password === pass) {
+                            foundReseller = { id: child.key, ...r };
+                        }
+                    });
+                }
+
+                if (foundReseller) {
+                    currentUserRole = 'reseller';
+                    currentResellerData = foundReseller;
+                    sessionStorage.setItem('firevod_reseller_session', JSON.stringify(foundReseller));
+                    document.getElementById('loginForm').reset();
+                    mostrarPanelUI();
+                } else {
+                    auth.signInWithEmailAndPassword(userOrEmail, pass).catch(() => {
+                        alert("❌ Usuario o contraseña incorrectos.");
+                        resetLoginBtn(btn);
+                    });
+                }
+            } catch (err) {
+                console.error("Error en login:", err);
+                alert("❌ Error al conectar.");
+                resetLoginBtn(btn);
+            }
+        }
+
+        function resetLoginBtn(btn) {
+            btn.disabled = false;
+            btn.textContent = "🚀 Ingresar al Sistema";
+        }
+
+        function cerrarSesion() {
+            sessionStorage.removeItem('firevod_reseller_session');
+            currentUserRole = null;
+            currentResellerData = null;
+            auth.signOut().then(() => mostrarLoginUI());
+        }
+
+        function mostrarLoginUI() {
+            currentUserRole = null;
+            currentResellerData = null;
+            cuentasData = [];
+            lineasCreadas = [];
+            resellersData = [];
+            m3uListsData = [];
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('top-nav').classList.add('hidden');
+            document.getElementById('main-wrapper').classList.add('hidden');
+        }
+
+        function mostrarPanelUI() {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('top-nav').classList.remove('hidden');
+            document.getElementById('main-wrapper').classList.remove('hidden');
+            
+            aplicarRestriccionesDeRol();
+            
+            if(!modoEdicion) {
+                generarPinAcceso();
+                actualizarFechaManual();
+            }
+            inicializarEscuchaFirebase();
+        }
+
+        function aplicarRestriccionesDeRol() {
+            const isReseller = (currentUserRole === 'reseller');
+            const roleBadge = document.getElementById('role-badge');
+
+            document.getElementById('nav-item-resellers').style.display = isReseller ? 'none' : 'flex';
+            document.getElementById('nav-item-servers').style.display = isReseller ? 'none' : 'flex';
+            document.getElementById('nav-item-m3u-lists').style.display = isReseller ? 'none' : 'flex'; 
+            document.getElementById('admin-dashboard-upload').style.display = isReseller ? 'none' : 'block';
+            document.getElementById('admin-advanced-sections').style.display = isReseller ? 'none' : 'contents';
+            document.getElementById('admin-backup-panel').style.display = isReseller ? 'none' : 'block';
+            
+            if (isReseller) {
+                roleBadge.textContent = "[Reseller]";
+                roleBadge.style.color = "var(--warning)";
+                roleBadge.style.background = "rgba(245,158,11,0.1)";
+                document.getElementById('stat-total-title').textContent = "🪙 Créditos Disponibles";
+                document.getElementById('stat-total').textContent = currentResellerData.creditos;
+                document.getElementById('stat-servers-card').style.display = 'none';
+            } else {
+                roleBadge.textContent = "[Admin]";
+                roleBadge.style.color = "var(--success)";
+                roleBadge.style.background = "rgba(16,185,129,0.1)";
+                document.getElementById('stat-total-title').textContent = "📈 Xtream Cargadas";
+                document.getElementById('stat-servers-card').style.display = 'block';
+            }
+
+            cambiarVista('view-dashboard', document.querySelector('[data-target="view-dashboard"]'));
+        }
+
+        // =======================
+        // SINCRONIZACIÓN FIREBASE
+        // =======================
+
+        function inicializarEscuchaFirebase() {
+            if (currentUserRole === 'admin') {
+                database.ref('resellers').on('value', (snapshot) => {
+                    resellersData = [];
+                    if (snapshot.exists()) {
+                        snapshot.forEach(child => {
+                            resellersData.push({ id: child.key, ...child.val() });
+                        });
+                    }
+                    renderizarTablaResellers();
+                });
+            } else {
+                database.ref('resellers/' + currentResellerData.id).on('value', (snapshot) => {
+                    if (snapshot.exists()) {
+                        currentResellerData = { id: snapshot.key, ...snapshot.val() };
+                        document.getElementById('stat-total').textContent = currentResellerData.creditos;
+                        sessionStorage.setItem('firevod_reseller_session', JSON.stringify(currentResellerData));
+                    }
+                });
+            }
+
+            database.ref('m3u_lists').on('value', (snapshot) => {
+                m3uListsData = [];
+                if (snapshot.exists()) {
+                    snapshot.forEach(child => {
+                        m3uListsData.push({ id: child.key, ...child.val() });
+                    });
+                }
+                actualizarSelectorListasM3u(); 
+                if (currentUserRole === 'admin') renderizarTablaListasM3u();
+            });
+
+            database.ref('lineas').on('value', (snapshot) => {
+                lineasCreadas = [];
+                const data = snapshot.val();
+                if (data) {
+                    Object.keys(data).forEach(pinKey => {
+                        const item = data[pinKey];
+                        if (currentUserRole === 'admin' || item.creador === currentResellerData.usuario) {
+                            lineasCreadas.push({ ...item, pin: item.pin || pinKey });
+                        }
+                    });
+                }
+                document.getElementById('stat-clientes').textContent = lineasCreadas.length;
+                verificarYActualizarEstados();
+                renderizarTablaClientes();
+            });
+
+            database.ref('servidores').on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    cuentasData = Array.isArray(data) ? data : Object.values(data);
+                } else {
+                    cuentasData = [];
+                }
+                
+                if (currentUserRole === 'admin') {
+                    document.getElementById('stat-total').textContent = cuentasData.length;
+                    const servidoresUnicos = new Set();
+                    cuentasData.forEach(c => { if(c && c.servidor && c.servidor !== "N/A") servidoresUnicos.add(c.servidor); });
+                    document.getElementById('stat-servers').textContent = servidoresUnicos.size;
+                    renderizarTablaXtream(cuentasData);
+                    actualizarVistaServidores();
+                    actualizarSelectorServidores();
+                }
+            });
+
+            setInterval(() => {
+                if (lineasCreadas.length > 0) verificarYActualizarEstados();
+            }, 30000);
+        }
+
+        function verificarYActualizarEstados() {
+            const ahora = Date.now();
+            lineasCreadas.forEach(linea => {
+                if (linea.vencimientoTimestamp && !linea.bloqueado) {
+                    if (ahora >= linea.vencimientoTimestamp) {
+                        if (linea.estado !== "BLOQUEADO" || linea.sesionActiva !== false) {
+                            linea.estado = "BLOQUEADO";
+                            linea.bloqueado = true;
+                            linea.sesionActiva = false;
+                            linea.mensajeEstado = "Tu cuenta está vencida y ha sido bloqueada.";
+                            database.ref('lineas/' + linea.pin).update({
+                                estado: "BLOQUEADO",
+                                bloqueado: true,
+                                sesionActiva: false,
+                                mensajeEstado: "Tu cuenta está vencida y ha sido bloqueada."
+                            });
+                        }
+                    }
+                }
+            });
+        }
+
+        // ==========================================
+        // FUNCIONES DE LISTAS M3U (CHECKER EN VIVO)
+        // ==========================================
+
+        async function guardarListaM3u(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnGuardarListaM3u');
+            btn.disabled = true;
+            btn.textContent = "⏳ Guardando...";
+
+            try {
+                const id = document.getElementById('m3uListId').value || `list_${Date.now()}`;
+                const name = document.getElementById('m3uListName').value.trim();
+                const content = document.getElementById('m3uListContent').value.trim();
+                const ocultarReseller = document.getElementById('m3uOcultarReseller').checked;
+
+                await database.ref('m3u_lists/' + id).set({
+                    nombre: name,
+                    contenido: content,
+                    ocultarReseller: ocultarReseller,
+                    timestamp: Date.now()
+                });
+
+                resetM3uListForm();
+                alert("✅ Lista M3U guardada.");
+            } catch (err) {
+                console.error("Error guardando lista:", err);
+                alert("❌ Error: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "💾 Guardar";
+            }
+        }
+
+        function resetM3uListForm() {
+            document.getElementById('createM3uListForm').reset();
+            document.getElementById('m3uListId').value = '';
+            document.getElementById('m3uOcultarReseller').checked = false;
+        }
+
+        function editarListaM3u(id) {
+            const list = m3uListsData.find(x => x.id === id);
+            if(list) {
+                document.getElementById('m3uListId').value = list.id;
+                document.getElementById('m3uListName').value = list.nombre;
+                document.getElementById('m3uListContent').value = list.contenido;
+                document.getElementById('m3uOcultarReseller').checked = list.ocultarReseller || false;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        function eliminarListaM3u(id) {
+            if(confirm("¿Estás seguro que deseas borrar esta lista?")) {
+                database.ref('m3u_lists/' + id).remove();
+            }
+        }
+
+        function chekarListaM3uEnVivo(id) {
+            const list = m3uListsData.find(x => x.id === id);
+            if (!list || !list.contenido) {
+                alert("⚠️ Lista vacía.");
+                return;
+            }
+
+            listaActivaEnChecker = list;
+            const lines = list.contenido.split(/\r?\n/);
+            let resultados = [];
+            let activasCount = 0;
+            let vencidasCount = 0;
+
+            lines.forEach((line) => {
+                let trimmed = line.trim();
+                if (!trimmed || trimmed.startsWith('#') || trimmed.includes('===')) return;
+
+                let lowerLine = trimmed.toLowerCase();
+                let estado = "ACTIVA";
+                let badgeClass = "badge-success";
+
+                if (
+                    lowerLine.includes('vencida') || 
+                    lowerLine.includes('caducada') || 
+                    lowerLine.includes('inactiva') || 
+                    lowerLine.includes('expired') || 
+                    lowerLine.includes('status: 0') || 
+                    lowerLine.includes('disabled')
+                ) {
+                    estado = "VENCIDA";
+                    badgeClass = "badge-danger";
+                    vencidasCount++;
+                } else {
+                    activasCount++;
+                }
+
+                let servidor = "N/A", usuario = "N/A";
+                const urlMatch = trimmed.match(/(?:URL:\s*|http[s]?:\/\/)([^:\/\s]+:\d+|[^\s|,;"]+)/i);
+                if (urlMatch) servidor = urlMatch[0].replace(/^URL:\s*/i, '').trim();
+
+                const userMatch = trimmed.match(/(?:User|Usuario|Username):\s*([^\s|,;"]+)/i) || trimmed.match(/username=([^\s&]+)/i);
+                if (userMatch) usuario = userMatch[1].trim();
+
+                if (usuario === "N/A") {
+                    const partes = trimmed.split(/[\s,|;]+/);
+                    if (partes.length >= 2) usuario = partes[1];
+                }
+
+                resultados.push({
+                    usuario: usuario,
+                    servidor: servidor,
+                    estado: estado,
+                    badge: badgeClass
+                });
+            });
+
+            const panel = document.getElementById('checkerResultPanel');
+            panel.style.display = 'block';
+            document.getElementById('checkerTitle').textContent = `🔍 ${list.nombre}`;
+            
+            const summary = document.getElementById('checkerSummary');
+            summary.innerHTML = `🟢 Activas: <span style="color:var(--success);">${activasCount}</span> | 🔴 Vencidas: <span style="color:var(--danger);">${vencidasCount}</span>`;
+
+            const tbody = document.getElementById('checkerTableBody');
+            tbody.innerHTML = '';
+            
+            if (resultados.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">Sin cuentas estructuradas.</td></tr>`;
+            } else {
+                resultados.forEach((res, idx) => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${idx + 1}</td>
+                            <td><strong>${escapeHTML(res.usuario)}</strong></td>
+                            <td class="server-tag">${escapeHTML(res.servidor)}</td>
+                            <td><span class="badge ${res.badge}">${res.estado}</span></td>
+                        </tr>
+                    `;
+                });
+            }
+
+            const btnLimpiar = document.getElementById('btnLimpiarListaAuto');
+            if (vencidasCount > 0) {
+                btnLimpiar.style.display = 'block';
+            } else {
+                btnLimpiar.style.display = 'none';
+            }
+
+            panel.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function cerrarPanelChecker() {
+            document.getElementById('checkerResultPanel').style.display = 'none';
+            listaActivaEnChecker = null;
+        }
+
+        async function ejecutarLimpiezaLista() {
+            if (!listaActivaEnChecker) return;
+            if (!confirm("¿Borrar cuentas vencidas de esta lista?")) return;
+
+            const lines = listaActivaEnChecker.contenido.split(/\r?\n/);
+            let lineasLimpias = [];
+
+            lines.forEach((line) => {
+                let trimmed = line.trim();
+                let lowerLine = trimmed.toLowerCase();
+
+                if (
+                    trimmed && 
+                    !trimmed.startsWith('#') && 
+                    !trimmed.includes('===') && (
+                        lowerLine.includes('vencida') || 
+                        lowerLine.includes('caducada') || 
+                        lowerLine.includes('inactiva') || 
+                        lowerLine.includes('expired') || 
+                        lowerLine.includes('status: 0') || 
+                        lowerLine.includes('disabled')
+                    )
+                ) {
+                    return; 
+                }
+                lineasLimpias.push(line);
+            });
+
+            const nuevoContenido = lineasLimpias.join('\n');
+
+            try {
+                await database.ref('m3u_lists/' + listaActivaEnChecker.id).update({
+                    contenido: nuevoContenido,
+                    timestamp: Date.now()
+                });
+                alert("✅ ¡Lista limpiada con éxito!");
+                cerrarPanelChecker();
+            } catch (err) {
+                console.error("Error limpiando lista:", err);
+                alert("❌ Error: " + err.message);
+            }
+        }
+
+        function renderizarTablaListasM3u() {
+            const tbody = document.getElementById('m3uListsTable');
+            tbody.innerHTML = '';
+            if (m3uListsData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 25px;">📂 No hay listas guardadas.</td></tr>`;
+                return;
+            }
+            m3uListsData.forEach(list => {
+                const tr = document.createElement('tr');
+                const badgeVisibilidad = list.ocultarReseller 
+                    ? `<span class="badge badge-danger">🔒 Oculto</span>` 
+                    : `<span class="badge badge-success">👁️ Visible</span>`;
+
+                tr.innerHTML = `
+                    <td><strong>${escapeHTML(list.nombre)}</strong></td>
+                    <td>${badgeVisibilidad}</td>
+                    <td>
+                        <div style="display: flex; gap: 6px;">
+                            <button type="button" class="btn-secondary btn-success" style="padding: 6px 8px; font-size: 0.75rem;" onclick="chekarListaM3uEnVivo('${list.id}')">🔍</button>
+                            <button type="button" class="btn-secondary btn-warning" style="padding: 6px 8px; font-size: 0.75rem;" onclick="editarListaM3u('${list.id}')">✏️</button>
+                            <button type="button" class="btn-secondary btn-danger" style="padding: 6px 8px; font-size: 0.75rem;" onclick="eliminarListaM3u('${list.id}')">🗑️</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function actualizarSelectorListasM3u() {
+            const select = document.getElementById('selectedM3uListClient');
+            if (!select) return;
+            
+            let options = '<option value="">-- Ninguna (Servidor por defecto) --</option>';
+            
+            m3uListsData.forEach(list => {
+                if (currentUserRole === 'reseller' && list.ocultarReseller) return;
+                let etiquetaOculto = (currentUserRole === 'admin' && list.ocultarReseller) ? ' [🔒 Oculta]' : '';
+                options += `<option value="${escapeHTML(list.nombre)}">${escapeHTML(list.nombre)}${etiquetaOculto}</option>`;
+            });
+            select.innerHTML = options;
+        }
+
+        function extraerCuentasDeTexto(rawText) {
+            const lines = rawText.split(/\r?\n/); 
+            let cuentasEncontradas = [];
+
+            lines.forEach((line) => {
+                let trimmed = line.trim();
+                if (!trimmed || trimmed.startsWith('#') || trimmed.includes('===')) return;
+
+                let lowerLine = trimmed.toLowerCase();
+                if (
+                    lowerLine.includes('vencida') || 
+                    lowerLine.includes('caducada') || 
+                    lowerLine.includes('inactiva') || 
+                    lowerLine.includes('expired') || 
+                    lowerLine.includes('status: 0') || 
+                    lowerLine.includes('disabled')
+                ) return; 
+
+                let servidor = "N/A", usuario = "N/A", password = "N/A";
+
+                const urlMatch = trimmed.match(/(?:URL:\s*|http[s]?:\/\/)([^:\/\s]+:\d+|[^\s|,;"]+)/i);
+                if (urlMatch) { 
+                    let extracted = urlMatch[0].replace(/^URL:\s*/i, '').trim(); 
+                    servidor = extracted.startsWith('http') ? extracted : 'http://' + extracted; 
+                }
+
+                const userMatch = trimmed.match(/(?:User|Usuario|Username):\s*([^\s|,;"]+)/i) || trimmed.match(/username=([^\s&]+)/i); 
+                if (userMatch) usuario = userMatch[1].trim();
+
+                const passMatch = trimmed.match(/(?:Pass|Password|Contraseña):\s*([^\s|,;"]+)/i) || trimmed.match(/password=([^\s&]+)/i); 
+                if (passMatch) password = passMatch[1].trim();
+
+                if (usuario === "N/A" || password === "N/A") {
+                    const partes = trimmed.split(/[\s,|;]+/);
+                    partes.forEach(p => {
+                        if (p.toLowerCase().startsWith('http') && servidor === "N/A") servidor = p;
+                    });
+                    if (partes.length >= 3 && servidor !== "N/A") {
+                        if (usuario === "N/A") usuario = partes[1];
+                        if (password === "N/A") password = partes[2];
+                    }
+                }
+
+                if (usuario !== "N/A" && password !== "N/A" && servidor !== "N/A") {
+                    cuentasEncontradas.push({ usuario, password, servidor });
+                }
+            });
+
+            return cuentasEncontradas;
+        }
+
+        // ==========================================
+        // FUNCIONES DE RESELLERS (PANEL DEL ADMIN)
+        // ==========================================
+
+        async function guardarReseller(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btnGuardarReseller');
+            btn.disabled = true;
+            btn.textContent = "⏳ Guardando...";
+
+            try {
+                const idInput = document.getElementById('resellerId').value;
+                const id = idInput || `res_${Date.now()}`;
+                const newUser = document.getElementById('resellerUser').value.trim();
+                const pass = document.getElementById('resellerPass').value.trim();
+                const credits = parseInt(document.getElementById('resellerCredits').value) || 0;
+
+                let oldUser = null;
+                if (idInput) {
+                    const rSnap = await database.ref('resellers/' + id).once('value');
+                    if (rSnap.exists()) oldUser = rSnap.val().usuario;
+                }
+
+                await database.ref('resellers/' + id).set({
+                    usuario: newUser,
+                    password: pass,
+                    creditos: credits,
+                    timestamp: Date.now()
+                });
+
+                if (oldUser && oldUser !== newUser) {
+                    const lineasSnap = await database.ref('lineas').once('value');
+                    if (lineasSnap.exists()) {
+                        const lineas = lineasSnap.val();
+                        const updates = {};
+                        Object.keys(lineas).forEach(pinKey => {
+                            if (lineas[pinKey].creador === oldUser) updates[`lineas/${pinKey}/creador`] = newUser;
+                        });
+                        if (Object.keys(updates).length > 0) await database.ref().update(updates);
+                    }
+                }
+
+                resetResellerForm();
+                alert("✅ ¡Reseller guardado!");
+            } catch (err) {
+                console.error("Error guardando reseller:", err);
+                alert("❌ Error: " + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "💾 Guardar";
+            }
+        }
+
+        function resetResellerForm() {
+            document.getElementById('createResellerForm').reset();
+            document.getElementById('resellerId').value = '';
+            document.getElementById('reseller-form-title').textContent = '➕ Crear / Editar Reseller';
+            document.getElementById('btnGuardarReseller').textContent = '💾 Guardar';
+        }
+
+        function editarReseller(id) {
+            const r = resellersData.find(x => x.id === id);
+            if(r) {
+                document.getElementById('resellerId').value = r.id;
+                document.getElementById('resellerUser').value = r.usuario;
+                document.getElementById('resellerPass').value = r.password;
+                document.getElementById('resellerCredits').value = r.creditos;
+                document.getElementById('reseller-form-title').textContent = `✏️ Editar Reseller: ${r.usuario}`;
+                document.getElementById('btnGuardarReseller').textContent = '💾 Actualizar';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        async function ajustarCreditosReseller(id, delta) {
+            const r = resellersData.find(x => x.id === id);
+            if (!r) return;
+            const accionTexto = delta > 0 ? `añadir ${delta}` : `restar ${Math.abs(delta)}`;
+            const inputVal = prompt(`¿Cuántos créditos deseas ${accionTexto} al reseller "${r.usuario}"?`, "1");
+            if (inputVal === null) return;
+            const cantidad = parseInt(inputVal);
+            if (isNaN(cantidad) || cantidad <= 0) {
+                alert("❌ Ingresa una cantidad válida.");
+                return;
+            }
+
+            let nuevosCreditos = r.creditos + (delta * cantidad);
+            if (nuevosCreditos < 0) nuevosCreditos = 0;
+
+            try {
+                await database.ref('resellers/' + id).update({ creditos: nuevosCreditos });
+                alert(`✅ Créditos actualizados correctamente. Total actual: ${nuevosCreditos}`);
+            } catch (err) {
+                console.error("Error ajustando créditos:", err);
+                alert("❌ Error al actualizar créditos: " + err.message);
+            }
+        }
+
+        function eliminarReseller(id) {
+            if(confirm("¿Estás seguro que deseas borrar este reseller?")) {
+                database.ref('resellers/' + id).remove();
+            }
+        }
+
+        function renderizarTablaResellers() {
+            const tbody = document.getElementById('resellersTable');
+            tbody.innerHTML = '';
+            if (resellersData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 25px;">👥 No hay resellers.</td></tr>`;
+                return;
+            }
+            resellersData.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${escapeHTML(r.usuario)}</strong></td>
+                    <td class="pass-cell">${escapeHTML(r.password)}</td>
+                    <td>
+                        <span class="badge badge-info">${escapeHTML(r.creditos)}</span>
+                        <div style="display: flex; gap: 4px; margin-top: 4px;">
+                            <button type="button" class="btn-secondary btn-success" style="padding: 2px 6px; font-size: 0.65rem;" onclick="ajustarCreditosReseller('${r.id}', 1)" title="Sumar Créditos">+ Sumar</button>
+                            <button type="button" class="btn-secondary btn-warning" style="padding: 2px 6px; font-size: 0.65rem;" onclick="ajustarCreditosReseller('${r.id}', -1)" title="Restar Créditos">- Restar</button>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                            <button type="button" class="btn-secondary btn-warning" style="padding: 6px 8px; font-size: 0.75rem;" onclick="editarReseller('${r.id}')" title="Editar">✏️</button>
+                            <button type="button" class="btn-secondary btn-danger" style="padding: 6px 8px; font-size: 0.75rem;" onclick="eliminarReseller('${r.id}')" title="Eliminar">🗑️</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // ==========================================
+        // FUNCIONES DE CLIENTES Y FECHAS
+        // ==========================================
+
+        function formatearFechaConMes(fecha) {
+            const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+            const dia = String(fecha.getDate()).padStart(2, '0');
+            const mes = meses[fecha.getMonth()];
+            const anio = fecha.getFullYear();
+            const horas = String(fecha.getHours()).padStart(2, '0');
+            const minutos = String(fecha.getMinutes()).padStart(2, '0');
+            return `${dia} de ${mes} de ${anio}, ${horas}:${minutos}`;
+        }
+
+        function actualizarFechaManual() {
+            const duracion = document.getElementById('newDuration').value;
+            let baseDate = new Date();
+
+            if (modoEdicion && duracion === 'keep' && lineaEdicionActual && lineaEdicionActual.vencimientoTimestamp) {
+                baseDate = new Date(lineaEdicionActual.vencimientoTimestamp);
+            } else {
+                if (duracion === '2h') baseDate.setHours(baseDate.getHours() + 2);
+                else if (duracion === '1m') baseDate.setMonth(baseDate.getMonth() + 1);
+                else if (duracion === '3m') baseDate.setMonth(baseDate.getMonth() + 3);
+                else if (duracion === '6m') baseDate.setMonth(baseDate.getMonth() + 6);
+                else if (duracion === '12m') baseDate.setFullYear(baseDate.getFullYear() + 1);
+            }
+
+            const year = baseDate.getFullYear();
+            const month = String(baseDate.getMonth() + 1).padStart(2, '0');
+            const day = String(baseDate.getDate()).padStart(2, '0');
+            const hours = String(baseDate.getHours()).padStart(2, '0');
+            const minutes = String(baseDate.getMinutes()).padStart(2, '0');
+            
+            document.getElementById('manualVencimiento').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+        }
+
+        function calcularCostoCreditosPorFecha(fechaSeleccionadaMs) {
+            const ahoraMs = Date.now();
+            const diferenciaMs = fechaSeleccionadaMs - ahoraMs;
+            if (diferenciaMs <= 0) return 0;
+
+            const unMesMs = 30 * 24 * 60 * 60 * 1000;
+            const mesesAprox = Math.round(diferenciaMs / unMesMs);
+
+            if (diferenciaMs < 6.5 * 3600 * 1000) {
+                const duracionSelect = document.getElementById('newDuration').value;
+                if (duracionSelect === '2h') return 0;
+            }
+
+            return Math.max(1, mesesAprox);
+        }
+
+        async function guardarOActualizarLinea(e) {
+            e.preventDefault();
+            const statusMsg = document.getElementById('form-status-msg');
+
+            const usuario = document.getElementById('newUser').value.trim();
+            const pass = document.getElementById('newPass').value.trim();
+            const pin = document.getElementById('newPin').value.trim();
+            const duracion = document.getElementById('newDuration').value;
+            const listaAsignada = document.getElementById('selectedM3uListClient').value; 
+            const creador = currentUserRole === 'admin' ? 'admin' : currentResellerData.usuario;
+            
+            let m3uCrudo = document.getElementById('newM3u').value.trim();
+            let backupM3u = document.getElementById('backupM3u').value.trim();
+            let dropboxUrl = document.getElementById('newDropboxUrl').value.trim();
+            let backupDropboxUrl = document.getElementById('backupDropboxUrl').value.trim();
+
+            let manualServer = document.getElementById('newServerUrl').value.trim().replace(/\/+$/, ""); 
+            let manualXtreamUser = document.getElementById('newXtreamUser').value.trim();
+            let manualXtreamPass = document.getElementById('newXtreamPass').value.trim();
+
+            if (listaAsignada) {
+                const listaEncontrada = m3uListsData.find(l => l.nombre === listaAsignada);
+                
+                if (currentUserRole === 'reseller' && listaEncontrada && listaEncontrada.ocultarReseller) {
+                    alert("❌ Sin permisos para esta lista.");
+                    return;
+                }
+
+                if (listaEncontrada && listaEncontrada.contenido) {
+                    const cuentasExtraidas = extraerCuentasDeTexto(listaEncontrada.contenido);
+                    if (cuentasExtraidas.length > 0) {
+                        const cuentaAleatoria = cuentasExtraidas[Math.floor(Math.random() * cuentasExtraidas.length)];
+                        manualServer = cuentaAleatoria.servidor;
+                        manualXtreamUser = cuentaAleatoria.usuario;
+                        manualXtreamPass = cuentaAleatoria.password;
+                    } else {
+                        alert("⚠️ La lista seleccionada no contiene cuentas válidas.");
+                        return;
+                    }
+                } else {
+                    alert("⚠️ No se encontró contenido en la lista.");
+                    return;
+                }
+            }
+
+            const inputVal = document.getElementById('manualVencimiento').value;
+            if (!inputVal) { alert("⚠️ Revisa la fecha."); return; }
+            const fechaSeleccionada = new Date(inputVal);
+            const vencimientoTimestamp = fechaSeleccionada.getTime();
+
+            let costoCreditos = 0;
+            if (currentUserRole === 'reseller') {
+                if (duracion === '2h') costoCreditos = 0;
+                else if (duracion === 'keep') costoCreditos = 0;
+                else costoCreditos = calcularCostoCreditosPorFecha(vencimientoTimestamp);
+
+                if (costoCreditos > 0 && duracion !== 'keep') {
+                    if (currentResellerData.creditos < costoCreditos) {
+                        alert(`❌ Créditos insuficientes. Requiere ${costoCreditos} y tienes ${currentResellerData.creditos}.`);
+                        return;
+                    }
+                    if (!confirm(`⚠️ Costo de operación: ${costoCreditos} crédito(s).\n¿Continuar?`)) return;
+                }
+
+                if (duracion === '2h') {
+                    const yaTuvoPrueba = lineasCreadas.some(l => 
+                        l.creador === currentResellerData.usuario && 
+                        l.usuarioCliente.toLowerCase() === usuario.toLowerCase() && 
+                        l.esPrueba === true &&
+                        (!modoEdicion || (modoEdicion && l.pin !== pin))
+                    );
+                    if (yaTuvoPrueba) {
+                        alert("❌ Este cliente ya recibió una prueba de 2 horas.");
+                        return;
+                    }
+                }
+
+                if (modoEdicion && !listaAsignada) {
+                    manualServer = lineaEdicionActual.serverUrl;
+                    manualXtreamUser = lineaEdicionActual.xtreamUser;
+                    manualXtreamPass = lineaEdicionActual.xtreamPass;
+                } else if (!listaAsignada) {
+                    if (cuentasData.length === 0) {
+                        alert("❌ No hay servidores disponibles.");
+                        return;
+                    }
+                    const srvA = cuentasData[Math.floor(Math.random() * cuentasData.length)];
+                    manualServer = srvA.servidor;
+                    manualXtreamUser = srvA.usuario;
+                    manualXtreamPass = srvA.password;
+                }
+            }
+
+            statusMsg.innerHTML = "⏳ <strong>Guardando datos...</strong>";
+
+            if (dropboxUrl) {
+                let contenidoRemoto = await obtenerContenidoRemoto(dropboxUrl);
+                if (contenidoRemoto) m3uCrudo = contenidoRemoto;
+            }
+            if (backupDropboxUrl) {
+                let contenidoBackupRemoto = await obtenerContenidoRemoto(backupDropboxUrl);
+                if (contenidoBackupRemoto) backupM3u = contenidoBackupRemoto;
+            }
+
+            const serverUrlFinal = manualServer || 'Personalizado / M3U';
+            const xtreamUserFinal = manualXtreamUser || 'N/A';
+            const xtreamPassFinal = manualXtreamPass || 'N/A';
+
+            const hideLiveMain = document.getElementById('hideLiveMain').checked;
+            const hideVodMain = document.getElementById('hideVodMain').checked;
+            const hideSeriesMain = document.getElementById('hideSeriesMain').checked;
+            const hideLiveBackup = document.getElementById('hideLiveBackup').checked;
+            const hideVodBackup = document.getElementById('hideVodBackup').checked;
+            const hideSeriesBackup = document.getElementById('hideSeriesBackup').checked;
+            const mergeTotalContent = document.getElementById('mergeTotalContent').checked;
+            const bloquearAcceso = document.getElementById('bloquearAcceso').checked;
+
+            let principalFiltrado = filtrarTextoM3u(m3uCrudo, hideLiveMain, hideVodMain, hideSeriesMain);
+            let respaldoFiltrado = filtrarTextoM3u(backupM3u, hideLiveBackup, hideVodBackup, hideSeriesBackup);
+
+            let m3uFinalCombinado = "#EXTM3U\n";
+            if (principalFiltrado) m3uFinalCombinado += principalFiltrado.replace(/#EXTM3U\s*/gi, '') + "\n";
+            if (mergeTotalContent && respaldoFiltrado) m3uFinalCombinado += respaldoFiltrado.replace(/#EXTM3U\s*/gi, '') + "\n";
+
+            let vencimientoData = {
+                timestamp: vencimientoTimestamp,
+                fechaTexto: formatearFechaConMes(fechaSeleccionada)
+            };
+
+            let esPruebaFinal = (modoEdicion && duracion === 'keep') ? (lineaEdicionActual.esPrueba || false) : (duracion === '2h');
+            const ahoraMs = Date.now();
+            const estaVencido = ahoraMs >= vencimientoData.timestamp;
+
+            let estadoCalculado = "ACTIVO", mensajeEstadoCalculado = "OK", sesionActiva = true, bloqueadoFinal = false;
+            if (bloquearAcceso || estaVencido) { 
+                estadoCalculado = "BLOQUEADO"; 
+                bloqueadoFinal = true;
+                mensajeEstadoCalculado = bloquearAcceso ? "Bloqueado." : "Vencido."; 
+                sesionActiva = false; 
+            }
+
+            let dispositivosExistentes = [];
+            if (modoEdicion && lineaEdicionActual) {
+                let rawExistente = lineaEdicionActual.dispositivosVinculados || lineaEdicionActual.dispositivos || [];
+                if (Array.isArray(rawExistente)) dispositivosExistentes = rawExistente.filter(d => d);
+                else if (typeof rawExistente === 'object' && rawExistente !== null) dispositivosExistentes = Object.values(rawExistente).filter(d => d);
+                else if (typeof rawExistente === 'string' && rawExistente.trim() !== "") dispositivosExistentes = [rawExistente];
+            }
+
+            const datosLinea = {
+                pin: pin,
+                urlCloudflareGenerada: CF_WORKER_URL,
+                usuarioCliente: usuario,
+                passCliente: pass,
+                serverUrl: serverUrlFinal,
+                xtreamUser: xtreamUserFinal,
+                xtreamPass: xtreamPassFinal,
+                url: serverUrlFinal, dns: serverUrlFinal,
+                username: xtreamUserFinal, user: xtreamUserFinal,
+                password: xtreamPassFinal, pass: xtreamPassFinal,
+                m3u: m3uFinalCombinado,
+                m3uCrudo: m3uCrudo,
+                dropboxUrl: dropboxUrl,
+                backupM3u: backupM3u,
+                backupDropboxUrl: backupDropboxUrl,
+                m3uFinal: m3uFinalCombinado,
+                hideLiveMain: hideLiveMain,
+                hideVodMain: hideVodMain,
+                hideSeriesMain: hideSeriesMain,
+                hideLiveBackup: hideLiveBackup,
+                hideVodBackup: hideVodBackup,
+                hideSeriesBackup: hideSeriesBackup,
+                mergeTotalContent: mergeTotalContent,
+                bloqueado: bloqueadoFinal,
+                vencimiento: vencimientoData.fechaTexto,
+                vencimientoTimestamp: vencimientoData.timestamp,
+                estado: estadoCalculado,
+                mensajeEstado: mensajeEstadoCalculado,
+                sesionActiva: sesionActiva,
+                esPrueba: esPruebaFinal,
+                listaAsignada: listaAsignada, 
+                creador: creador, 
+                dispositivosVinculados: dispositivosExistentes, 
+                resetTimestamp: lineaEdicionActual ? (lineaEdicionActual.resetTimestamp || 0) : 0,
+                timestampUltimaModificacion: Date.now()
+            };
+
+            try {
+                if (currentUserRole === 'reseller' && costoCreditos > 0 && duracion !== 'keep') {
+                    const nuevosCreditos = currentResellerData.creditos - costoCreditos;
+                    await database.ref('resellers/' + currentResellerData.id).update({ creditos: nuevosCreditos });
+                    currentResellerData.creditos = nuevosCreditos;
+                    document.getElementById('stat-total').textContent = nuevosCreditos;
+                    sessionStorage.setItem('firevod_reseller_session', JSON.stringify(currentResellerData));
+                }
+
+                await database.ref('lineas/' + pin).set(datosLinea);
+                resetearFormulario();
+                alert(modoEdicion ? "✅ ¡Línea actualizada!" : `✅ ¡Línea creada!\nPIN: ${pin}`);
+            } catch (error) {
+                console.error("Error guardando línea:", error);
+                alert("❌ Error: " + error.message);
+            } finally {
+                statusMsg.innerHTML = "🔄 Sincronización en tiempo real en Firebase.";
+            }
+        }
+
+        async function liberarDispositivos(pin) {
+            if (confirm(`¿Liberar dispositivos y desbloquear el PIN ${pin}?`)) {
+                try {
+                    await database.ref('lineas/' + pin).update({
+                        dispositivosVinculados: [],
+                        bloqueado: false,
+                        estado: "ACTIVO",
+                        mensajeEstado: "OK",
+                        sesionActiva: true,
+                        resetTimestamp: Date.now()
+                    });
+                    alert("✅ Dispositivos reseteados a 0/2 y cuenta desbloqueada.");
+                    verificarCuentaEnVivo(); // Refrescar el verificador si está activo
+                } catch (err) {
+                    console.error("Error:", err);
+                    alert("❌ Ocurrió un error.");
+                }
+            }
+        }
+
+        async function borrarCliente(pin) {
+            if (confirm(`⚠️ ¿Estás seguro de eliminar permanentemente la línea con PIN ${pin}?`)) {
+                try {
+                    await database.ref('lineas/' + pin).remove();
+                    alert("🗑️ ¡Cliente eliminado correctamente!");
+                } catch (err) {
+                    console.error("Error al borrar cliente:", err);
+                    alert("❌ Error al eliminar el cliente: " + err.message);
+                }
+            }
+        }
+
+        function cambiarPaginacionClientes(val) {
+            clientesLimitPerPage = val === 'todos' ? 'todos' : parseInt(val);
+            clientesCurrentPage = 1;
+            renderizarTablaClientes();
+        }
+
+        function cambiarPaginaOffset(dir) {
+            if (clientesLimitPerPage === 'todos') return;
+            const totalItems = lineasCreadas.length;
+            const totalPages = Math.ceil(totalItems / clientesLimitPerPage) || 1;
+            
+            clientesCurrentPage += dir;
+            if (clientesCurrentPage < 1) clientesCurrentPage = 1;
+            if (clientesCurrentPage > totalPages) clientesCurrentPage = totalPages;
+            
+            renderizarTablaClientes();
+        }
+
+        function renderizarTablaClientes() {
+            const thead = document.getElementById('thead-clients');
+            const esAdmin = currentUserRole === 'admin';
+            
+            thead.innerHTML = `
+                <tr>
+                    <th>#️⃣</th>
+                    <th>👤 Cliente</th>
+                    <th>🔑 Pass</th>
+                    <th>📌 PIN</th>
+                    <th>🟢 Estado</th>
+                    ${esAdmin ? '<th>👔 Creador</th>' : ''}
+                    <th>📱 Dispositivos</th>
+                    <th>🌐 Servidor</th>
+                    ${esAdmin ? '<th>🛡️ Filtros</th>' : ''}
+                    <th>⏳ Vence</th>
+                    <th>⚡ Acciones</th>
+                </tr>
+            `;
+
+            const tbody = document.getElementById('clientsTable');
+            tbody.innerHTML = '';
+
+            const searchInputEl = document.getElementById('searchClientsTable');
+            const filtroTexto = searchInputEl ? searchInputEl.value.toLowerCase().trim() : '';
+
+            const lineasFiltradas = lineasCreadas.filter(item => {
+                if (!item) return false;
+                if (!filtroTexto) return true;
+
+                const cliente = (item.usuarioCliente || '').toLowerCase();
+                const pass = (item.passCliente || '').toLowerCase();
+                const pin = (item.pin || '').toString().toLowerCase();
+                const servidor = (item.serverUrl || '').toLowerCase();
+                const creador = (item.creador || '').toLowerCase();
+                const vencimiento = (item.vencimiento || '').toLowerCase();
+
+                let rawDisp = item.dispositivosVinculados || item.dispositivos || [];
+                let dispositivosStr = '';
+                if (Array.isArray(rawDisp)) {
+                    dispositivosStr = rawDisp.filter(d => d).join(' ').toLowerCase();
+                } else if (typeof rawDisp === 'object' && rawDisp !== null) {
+                    dispositivosStr = Object.values(rawDisp).filter(d => d).join(' ').toLowerCase();
+                } else if (typeof rawDisp === 'string') {
+                    dispositivosStr = rawDisp.toLowerCase();
+                }
+
+                return cliente.includes(filtroTexto) ||
+                       pass.includes(filtroTexto) ||
+                       pin.includes(filtroTexto) ||
+                       servidor.includes(filtroTexto) ||
+                       creador.includes(filtroTexto) ||
+                       vencimiento.includes(filtroTexto) ||
+                       dispositivosStr.includes(filtroTexto);
+            });
+            
+            if (lineasFiltradas.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${esAdmin ? 11 : 9}" style="text-align: center; color: var(--text-muted); padding: 25px;">👥 No se encontraron clientes registrados.</td></tr>`;
+                document.getElementById('paginationInfo').textContent = "Mostrando 0 de 0";
+                document.getElementById('btnPrevPage').style.display = 'none';
+                document.getElementById('btnNextPage').style.display = 'none';
+                return;
+            }
+
+            let startIndex = 0;
+            let endIndex = lineasFiltradas.length;
+            let totalPages = 1;
+
+            if (clientesLimitPerPage !== 'todos') {
+                totalPages = Math.ceil(lineasFiltradas.length / clientesLimitPerPage) || 1;
+                if (clientesCurrentPage > totalPages) clientesCurrentPage = totalPages;
+                startIndex = (clientesCurrentPage - 1) * clientesLimitPerPage;
+                endIndex = Math.min(startIndex + clientesLimitPerPage, lineasFiltradas.length);
+            }
+
+            const itemsPagina = lineasFiltradas.slice(startIndex, endIndex);
+
+            itemsPagina.forEach((item, indexRelativo) => {
+                if (!item) return;
+                const indexReal = startIndex + indexRelativo;
+                const tr = document.createElement('tr');
+                
+                const htmlCreador = esAdmin ? `<td><span class="badge ${item.creador === 'admin' ? 'badge-success' : 'badge-warning'}">${escapeHTML(item.creador || 'admin')}</span></td>` : '';
+                
+                let rawDisp = item.dispositivosVinculados || item.dispositivos || [];
+                let dispositivos = [];
+                if (Array.isArray(rawDisp)) dispositivos = rawDisp.filter(d => d);
+                else if (typeof rawDisp === 'object' && rawDisp !== null) dispositivos = Object.values(rawDisp).filter(d => d);
+                else if (typeof rawDisp === 'string' && rawDisp.trim() !== "") dispositivos = [rawDisp];
+                
+                const countDisp = dispositivos.length;
+                let badgeDispClass = countDisp === 2 ? 'badge-danger' : (countDisp === 1 ? 'badge-warning' : 'badge-success');
+                let htmlDispositivos = `<td><span class="badge ${badgeDispClass}">📱 ${countDisp}/2</span>`;
+                
+                if (countDisp > 0 || item.bloqueado) {
+                    htmlDispositivos += `<br><button type="button" class="btn-secondary" style="padding: 2px 4px; font-size: 0.65rem; margin-top: 3px; color: var(--danger);" onclick="liberarDispositivos('${item.pin}')">🧹 Reset</button>`;
+                }
+                htmlDispositivos += `</td>`;
+
+                let htmlFiltros = '';
+                if (esAdmin) {
+                    let f = '<small>';
+                    f += (item.hideLiveMain || item.hideVodMain || item.hideSeriesMain) ? '[F]' : 'Todo';
+                    f += '</small>';
+                    htmlFiltros = `<td>${f}</td>`;
+                }
+
+                let cuentaInfo = '';
+                if (esAdmin) {
+                    let listaBadge = item.listaAsignada ? `<br><small style="color:var(--warning);">📂 ${escapeHTML(item.listaAsignada)}</small>` : '';
+                    cuentaInfo = `<span class="server-tag">${escapeHTML(item.serverUrl || 'N/A')}</span>${listaBadge}`;
+                } else {
+                    let listaBadge = item.listaAsignada ? `<br><small style="color:var(--warning);">Lista: ${escapeHTML(item.listaAsignada)}</small>` : '';
+                    cuentaInfo = `<span class="badge badge-info">Asignado</span>${listaBadge}`;
+                }
+
+                let estadoPinBadge = '<span class="badge badge-success">🟢 ACT</span>';
+                if (item.bloqueado || item.estado === "BLOQUEADO") estadoPinBadge = '<span class="badge badge-danger">🔴 BLOQ</span>';
+
+                tr.innerHTML = `
+                    <td>${String(indexReal + 1).padStart(3, '0')}</td>
+                    <td><strong>${escapeHTML(item.usuarioCliente || 'Cliente')}</strong></td>
+                    <td class="pass-cell">${escapeHTML(item.passCliente || '******')}</td>
+                    <td class="pin-cell">${escapeHTML(item.pin || indexReal)}</td>
+                    <td>${estadoPinBadge}</td>
+                    ${htmlCreador}
+                    ${htmlDispositivos}
+                    <td>${cuentaInfo}</td>
+                    ${htmlFiltros}
+                    <td>${escapeHTML(item.vencimiento || 'N/A')}</td>
+                    <td>
+                        <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                            <button type="button" class="btn-secondary btn-warning" style="padding: 5px 7px; font-size: 0.72rem;" onclick="cargarLineaParaEditar('${item.pin}')" title="Editar">✏️</button>
+                            ${esAdmin ? `<button type="button" class="btn-secondary" style="padding: 5px 7px; font-size: 0.72rem; background: var(--accent); color: #fff;" onclick="copiarM3uFinal('${item.pin}')" title="Copiar M3U">📋</button>` : ''}
+                            <button type="button" class="btn-secondary btn-danger" style="padding: 5px 7px; font-size: 0.72rem;" onclick="borrarCliente('${item.pin}')" title="Borrar Cliente">🗑️</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            const paginationInfo = document.getElementById('paginationInfo');
+            const btnPrev = document.getElementById('btnPrevPage');
+            const btnNext = document.getElementById('btnNextPage');
+
+            if (clientesLimitPerPage === 'todos') {
+                paginationInfo.textContent = `Mostrando todos (${lineasFiltradas.length} registros)`;
+                btnPrev.style.display = 'none';
+                btnNext.style.display = 'none';
+            } else {
+                paginationInfo.textContent = `Mostrando ${startIndex + 1}-${endIndex} de ${lineasFiltradas.length} (Pág. ${clientesCurrentPage}/${totalPages})`;
+                btnPrev.style.display = clientesCurrentPage > 1 ? 'inline-flex' : 'none';
+                btnNext.style.display = clientesCurrentPage < totalPages ? 'inline-flex' : 'none';
+            }
+        }
+
+        function cargarLineaParaEditar(pin) {
+            const linea = lineasCreadas.find(l => String(l.pin) === String(pin));
+            if (!linea) { alert("⚠️ No se encontró la información."); return; }
+
+            modoEdicion = true;
+            lineaEdicionActual = linea;
+
+            document.getElementById('form-title-text').textContent = `✏️ Editar PIN: ${pin}`;
+            document.getElementById('btnCancelarEdicion').style.display = 'inline-block';
+            document.getElementById('btnSubmitForm').textContent = '💾 Actualizar';
+
+            document.getElementById('newUser').value = linea.usuarioCliente || '';
+            document.getElementById('newPass').value = linea.passCliente || '';
+            document.getElementById('newPin').value = linea.pin || pin;
+            document.getElementById('newPin').readOnly = true;
+
+            const optKeep = document.getElementById('opt-keep');
+            optKeep.style.display = 'block';
+            optKeep.textContent = `🔒 Mantener fecha (${linea.vencimiento || ''})`;
+            document.getElementById('newDuration').value = 'keep';
+            document.getElementById('label-duracion-nota').textContent = '(Sin costo)';
+
+            actualizarFechaManual(); 
+
+            document.getElementById('selectedM3uListClient').value = linea.listaAsignada || ''; 
+            document.getElementById('bloquearAcceso').checked = linea.bloqueado || linea.estado === "BLOQUEADO";
+
+            if (currentUserRole === 'admin') {
+                document.getElementById('newServerUrl').value = linea.serverUrl !== 'Personalizado / M3U' ? linea.serverUrl : '';
+                document.getElementById('newXtreamUser').value = linea.xtreamUser !== 'N/A' ? linea.xtreamUser : '';
+                document.getElementById('newXtreamPass').value = linea.xtreamPass !== 'N/A' ? linea.xtreamPass : '';
+                document.getElementById('serverSelect').value = '';
+                
+                document.getElementById('newDropboxUrl').value = linea.dropboxUrl || '';
+                document.getElementById('newM3u').value = linea.m3uCrudo || '';
+                document.getElementById('backupDropboxUrl').value = linea.backupDropboxUrl || '';
+                document.getElementById('backupM3u').value = linea.backupM3u || '';
+
+                document.getElementById('hideLiveMain').checked = linea.hideLiveMain || false;
+                document.getElementById('hideVodMain').checked = linea.hideVodMain || false;
+                document.getElementById('hideSeriesMain').checked = linea.hideSeriesMain || false;
+                document.getElementById('hideLiveBackup').checked = linea.hideLiveBackup || false;
+                document.getElementById('hideVodBackup').checked = linea.hideVodBackup || false;
+                document.getElementById('hideSeriesBackup').checked = linea.hideSeriesBackup || false;
+                document.getElementById('mergeTotalContent').checked = linea.mergeTotalContent !== undefined ? linea.mergeTotalContent : true;
+            }
+
+            cambiarVista('view-lines', document.querySelector('[data-target="view-lines"]'));
+            
+            // Scroll a la zona de edición
+            document.getElementById('createLineForm').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function resetearFormulario() {
+            modoEdicion = false;
+            lineaEdicionActual = null;
+            document.getElementById('form-title-text').textContent = '➕ Nueva Línea Cliente';
+            document.getElementById('btnCancelarEdicion').style.display = 'none';
+            document.getElementById('btnSubmitForm').textContent = '💾 Guardar y Activar Línea';
+            
+            const optKeep = document.getElementById('opt-keep');
+            optKeep.style.display = 'none';
+            document.getElementById('label-duracion-nota').textContent = '';
+            document.getElementById('newDuration').value = '1m';
+
+            document.getElementById('createLineForm').reset();
+            document.getElementById('newPin').readOnly = false;
+            document.getElementById('bloquearAcceso').checked = false;
+            document.getElementById('selectedM3uListClient').value = ''; 
+            if (currentUserRole === 'admin') document.getElementById('serverSelect').value = '';
+            
+            generarPinAcceso();
+            actualizarFechaManual(); 
+        }
+
+        // ==========================================
+        // FUNCIONES DE UTILIDAD GENERALES Y XTREAM
+        // ==========================================
+
+        function cambiarVista(viewId, element) {
+            document.querySelectorAll('.content-view').forEach(view => view.classList.remove('active'));
+            document.querySelectorAll('.top-nav-item').forEach(item => item.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+            if(element) element.classList.add('active');
+            
+            const titulos = {
+                'view-dashboard': '📊 Dashboard',
+                'view-lines': '👥 Gestión Clientes',
+                'view-m3u-lists': '📝 Listas M3U', 
+                'view-resellers': '👔 Gestión Resellers',
+                'view-servers': '🖥️ Servidores',
+                'view-settings': '⚙️ Ajustes'
+            };
+            document.getElementById('nav-title').textContent = titulos[viewId];
+        }
+
+        function generarPinAcceso() { if (!modoEdicion) document.getElementById('newPin').value = Math.floor(100000 + Math.random() * 900000); }
+        function generarUsuarioAleatorio() { const pr = ['usr', 'client', 'fast', 'play', 'go']; document.getElementById('newUser').value = `${pr[Math.floor(Math.random()*pr.length)]}_${Math.floor(1000 + Math.random() * 9000)}`; }
+        function generarPasswordAleatorio() { const c = 'abcdefghijklmnopqrstuvwxyz0123456789'; let p = ''; for(let i=0; i<8; i++) p += c.charAt(Math.floor(Math.random() * c.length)); document.getElementById('newPass').value = p; }
+
+        document.getElementById('fileLoader').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            document.getElementById('file-name').textContent = `📁 ${file.name}`;
+            const reader = new FileReader();
+            reader.onload = function(event) { parsearContenido(event.target.result); };
+            reader.readAsText(file);
+        });
+
+        function parsearContenido(rawText) {
+            const lines = rawText.split(/\r?\n/); let cuentasNuevas = [];
+            lines.forEach((line) => {
+                let trimmed = line.trim();
+                if (!trimmed || trimmed.startsWith('#') || trimmed.includes('===')) return;
+                let servidor = "N/A", usuario = "N/A", password = "N/A", vencimiento = "Sin fecha", conexiones = "1", estado = "Active";
+
+                const urlMatch = trimmed.match(/(?:URL:\s*|http[s]?:\/\/)([^:\/\s]+:\d+|[^\s|,;]+)/i);
+                if (urlMatch) { let extracted = urlMatch[0].replace(/^URL:\s*/i, '').trim(); servidor = extracted.startsWith('http') ? extracted : 'http://' + extracted; }
+                const userMatch = trimmed.match(/(?:User|Usuario):\s*([^\s|,;]+)/i); if (userMatch) usuario = userMatch[1].trim();
+                const passMatch = trimmed.match(/(?:Pass|Password|Contraseña):\s*([^\s|,;]+)/i); if (passMatch) password = passMatch[1].trim();
+                const estadoMatch = trimmed.match(/(?:Estado):\s*([^\s|,;]+)/i); if (estadoMatch) estado = estadoMatch[1].trim();
+                const venceMatch = trimmed.match(/(?:Vence|Vencimiento):\s*([^\s|,;]+)/i); if (venceMatch) vencimiento = venceMatch[1].trim();
+                const conexMatch = trimmed.match(/(?:Conexiones|Conexion):\s*(\d+)/i); if (conexMatch) conexiones = conexMatch[1].trim();
+
+                if (usuario !== "N/A" && password !== "N/A") cuentasNuevas.push({ id: cuentasNuevas.length + 1, usuario, password, servidor, vencimiento, conexiones, estado });
+            });
+            if(cuentasNuevas.length > 0) database.ref('servidores').set(cuentasNuevas).then(() => alert(`✅ ¡${cuentasNuevas.length} cuentas guardadas!`));
+        }
+
+        function renderizarTablaXtream(data) {
+            const tbody = document.getElementById('accountsTable'); tbody.innerHTML = '';
+            if (data.length === 0) { tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 25px;">📂 Sin cuentas.</td></tr>`; return; }
+            data.forEach((item, index) => {
+                if(!item) return; const tr = document.createElement('tr');
+                let badgeClass = item.estado.toLowerCase().includes('caducad') || item.estado.toLowerCase().includes('inactiv') ? 'badge-danger' : 'badge-success';
+                tr.innerHTML = `
+                    <td>${String(index + 1).padStart(3, '0')}</td>
+                    <td><strong>${escapeHTML(item.usuario)}</strong></td>
+                    <td class="pass-cell">${escapeHTML(item.password)}</td>
+                    <td class="server-tag">${escapeHTML(item.servidor)}</td>
+                    <td>${escapeHTML(item.vencimiento)}</td>
+                    <td><span class="badge badge-info">${escapeHTML(item.conexiones)}</span></td>
+                    <td><span class="badge ${badgeClass}">${escapeHTML(item.estado)}</span></td>
+                `; tbody.appendChild(tr);
+            });
+        }
+
+        function actualizarVistaServidores() {
+            const container = document.getElementById('servers-list-container');
+            if (cuentasData.length === 0) { container.innerHTML = `<p style="color: var(--text-muted); font-size: 0.85rem;">📂 No hay servidores.</p>`; return; }
+            let html = '<div style="display: flex; flex-direction: column; gap: 10px;">';
+            cuentasData.forEach(cuenta => {
+                if(cuenta) {
+                    html += `
+                    <div style="background: var(--bg-dark); padding: 14px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-weight: bold; color: var(--info); font-size: 0.88rem;">🖥️ ${escapeHTML(cuenta.servidor)}</div>
+                            <div style="font-size: 0.78rem; color: var(--text-muted);">👤 Usr: ${escapeHTML(cuenta.usuario)}</div>
+                        </div>
+                        <div><span class="badge badge-info">🔗 ${escapeHTML(cuenta.conexiones)}</span></div>
+                    </div>`;
+                }
+            }); container.innerHTML = html + '</div>';
+        }
+
+        function actualizarSelectorServidores() {
+            const select = document.getElementById('serverSelect');
+            let options = '<option value="">-- Seleccionar de la lista --</option>';
+            cuentasData.forEach((cuenta, idx) => {
+                if (cuenta && cuenta.servidor !== "N/A") options += `<option value="${idx}">🖥️ ${cuenta.servidor} | 👤 ${cuenta.usuario}</option>`;
+            }); select.innerHTML = options;
+        }
+
+        function inyectarServidorDropdown() {
+            const idx = document.getElementById('serverSelect').value;
+            if(idx !== "") {
+                document.getElementById('newServerUrl').value = cuentasData[idx].servidor;
+                document.getElementById('newXtreamUser').value = cuentasData[idx].usuario;
+                document.getElementById('newXtreamPass').value = cuentasData[idx].password;
+            } else {
+                document.getElementById('newServerUrl').value = ""; document.getElementById('newXtreamUser').value = ""; document.getElementById('newXtreamPass').value = "";
+            }
+        }
+
+        async function obtenerContenidoRemoto(url) {
+            if (!url) return '';
+            let urlOpt = url.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '?raw=1').replace('?dl=1', '?raw=1');
+            try { let res = await fetch(urlOpt); if (res.ok) return await res.text(); } catch (e) {}
+            try { let proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(urlOpt)}`; let res2 = await fetch(proxy); if (res2.ok) return await res2.text(); } catch (err) {}
+            return '';
+        }
+
+        function filtrarTextoM3u(texto, noLive, noVod, noSeries) {
+            if (!texto) return '';
+            const lineas = texto.split(/\r?\n/); let res = [], curInf = '', curExt = [];
+            for (let i = 0; i < lineas.length; i++) {
+                let l = lineas[i], low = l.toLowerCase();
+                if (low.startsWith('#extinf:')) {
+                    if (curInf && !debeOcultar(curInf, curExt, noLive, noVod, noSeries)) { res.push(curInf); res.push(...curExt); }
+                    curInf = l; curExt = [];
+                } else if (l.startsWith('#') && !low.startsWith('#extm3u')) { curExt.push(l);
+                } else if (l.trim() !== '') {
+                    curExt.push(l);
+                    if (curInf) { if (!debeOcultar(curInf, curExt, noLive, noVod, noSeries)) { res.push(curInf); res.push(...curExt); } curInf = ''; curExt = []; }
+                }
+            }
+            if (curInf && !debeOcultar(curInf, curExt, noLive, noVod, noSeries)) { res.push(curInf); res.push(...curExt); }
+            return res.join('\n');
+        }
+
+        function debeOcultar(inf, ext, noL, noV, noS) {
+            let t = (inf + ' ' + ext.join(' ')).toLowerCase();
+            let esS = t.includes('series') || t.includes('serie') || t.includes('season') || t.includes('temporada') || t.includes('/series/'); if (noS && esS) return true;
+            let esV = t.includes('pelicula') || t.includes('movie') || t.includes('vod') || t.includes('/movie/'); if (noV && esV) return true;
+            let esL = t.includes('/live/') || (!esS && !esV); if (noL && esL && !esS && !esV) return true;
+            return false;
+        }
+
+        function copiarM3uFinal(pin) {
+            const linea = lineasCreadas.find(l => String(l.pin) === String(pin));
+            navigator.clipboard.writeText(linea.m3uFinal || '').then(() => alert(`📋 ¡M3U copiado!`));
+        }
+
+        function escapeHTML(str) { return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    </script>
+</body>
+</html>
